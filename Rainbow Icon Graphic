@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Divine Rainbow Banana Screensaver</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        canvas { display: block; }
+        #codeBackground {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            overflow: hidden;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <div id="codeBackground"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const bananaGeometry = new THREE.TorusKnotGeometry(1, 0.3, 200, 32);
+        const bananaMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                time: { value: 0 }
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                void main() {
+                    vUv = uv;
+                    vPosition = position;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform float time;
+                varying vec2 vUv;
+                varying vec3 vPosition;
+                
+                vec3 rainbow(float t) {
+                    vec3 a = vec3(0.5, 0.5, 0.5);
+                    vec3 b = vec3(0.5, 0.5, 0.5);
+                    vec3 c = vec3(1.0, 1.0, 1.0);
+                    vec3 d = vec3(0.00, 0.33, 0.67);
+                    return a + b * cos(6.28318 * (c * t + d));
+                }
+                
+                float crack(vec2 uv, float seed) {
+                    float noise = fract(sin(dot(uv, vec2(12.9898, 78.233) * seed)) * 43758.5453);
+                    return smoothstep(0.7, 0.8, noise);
+                }
+                
+                void main() {
+                    vec3 baseColor = rainbow(vUv.x + time * 0.1);
+                    float pulse = sin(time * 2.0 + length(vPosition) * 3.0) * 0.5 + 0.5;
+                    
+                    float crack1 = crack(vUv, 1.0);
+                    float crack2 = crack(vUv, 2.0);
+                    float crack3 = crack(vUv, 3.0);
+                    
+                    float crackLight = max(crack1, max(crack2, crack3)) * pulse;
+                    
+                    vec3 color = baseColor + crackLight * vec3(1.0, 1.0, 0.8);
+                    
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `
+        });
+        const banana = new THREE.Mesh(bananaGeometry, bananaMaterial);
+        scene.add(banana);
+
+        camera.position.z = 5;
+
+        function animate() {
+            requestAnimationFrame(animate);
+            banana.rotation.x += 0.005;
+            banana.rotation.y += 0.005;
+            bananaMaterial.uniforms.time.value += 0.05;
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        const codeBackground = document.getElementById('codeBackground');
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+        const columns = Math.floor(window.innerWidth / 14);
+
+        function createCodeRain() {
+            codeBackground.innerHTML = '';
+            for (let i = 0; i < columns; i++) {
+                const column = document.createElement('div');
+                column.style.position = 'absolute';
+                column.style.left = i * 14 + 'px';
+                column.style.top = (Math.random() * window.innerHeight) + 'px';
+                column.style.whiteSpace = 'nowrap';
+                codeBackground.appendChild(column);
+
+                let y = 0;
+                const intervalId = setInterval(() => {
+                    const char = characters[Math.floor(Math.random() * characters.length)];
+                    column.innerHTML = char + '<br>' + column.innerHTML;
+                    y += 14;
+                    column.style.top = (parseFloat(column.style.top) + 14) + 'px';
+
+                    if (y > window.innerHeight) {
+                        clearInterval(intervalId);
+                        codeBackground.removeChild(column);
+                        createCodeRain();
+                    }
+                }, 50 + Math.random() * 100);
+            }
+        }
+
+        createCodeRain();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
