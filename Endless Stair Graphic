@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Never‑Ending Glowing Optical Illusion Staircase</title>
+    <style>
+      /* Full-screen canvas with a black background */
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: black;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Include Three.js from a CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+      // ----- Scene, Camera, Renderer Setup -----
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      camera.position.set(0, 5, 15);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // ----- Lighting -----
+      // Ambient light for overall illumination.
+      const ambientLight = new THREE.AmbientLight(0x404040, 1.5);
+      scene.add(ambientLight);
+      // A pulsing point light adds a glowing effect.
+      const pointLight = new THREE.PointLight(0xffffff, 2, 50);
+      pointLight.position.set(0, 10, 0);
+      scene.add(pointLight);
+
+      // ----- Staircase Group -----
+      const staircase = new THREE.Group();
+      scene.add(staircase);
+
+      // Parameters for the spiral staircase.
+      const stepCount = 30;    // number of steps in the loop
+      const radius = 5;        // horizontal distance from center to step
+      const stepHeight = 0.3;  // vertical height per step
+      const stepDepth = 1.2;   // depth of each step
+      const stepWidth = 3;     // width of each step
+      const angleIncrement = (2 * Math.PI) / stepCount;
+      const totalHeight = stepCount * stepHeight; // used for seamless looping
+
+      // ----- Create Steps -----
+      // Store each step's initial vertical position so we can recycle them seamlessly.
+      for (let i = 0; i < stepCount; i++) {
+        const angle = i * angleIncrement;
+        const geometry = new THREE.BoxGeometry(stepWidth, stepHeight, stepDepth);
+        // Phong material with strong emissive color for a glowing effect.
+        const material = new THREE.MeshPhongMaterial({
+          color: 0x00ffcc,
+          emissive: 0x00ffcc,
+          emissiveIntensity: 1.5,
+          shininess: 100
+        });
+        const step = new THREE.Mesh(geometry, material);
+        // Set the initial horizontal and vertical positions.
+        step.position.x = radius * Math.cos(angle);
+        step.position.z = radius * Math.sin(angle);
+        // Store the initial Y value in userData.
+        step.userData.initialY = i * stepHeight;
+        // The actual y-position will be computed in the animation loop.
+        step.position.y = step.userData.initialY;
+        // Rotate the step so its front faces the center.
+        step.rotation.y = -angle;
+        staircase.add(step);
+      }
+
+      // A variable to track the overall vertical offset (increases continuously).
+      let verticalOffset = 0;
+
+      // ----- Animation Loop -----
+      const clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+        const delta = clock.getDelta();
+        const time = clock.getElapsedTime();
+
+        // Increase the vertical offset over time.
+        verticalOffset += 0.5 * delta;  // Adjust speed as desired
+
+        // For each step, update the y-position using modulo arithmetic for a seamless loop.
+        staircase.children.forEach(step => {
+          let newY = step.userData.initialY + verticalOffset;
+          // Ensure newY is always within [0, totalHeight)
+          newY = ((newY % totalHeight) + totalHeight) % totalHeight;
+          step.position.y = newY;
+        });
+
+        // Slowly rotate the entire staircase to enhance the optical illusion.
+        staircase.rotation.y += 0.01;
+
+        // Pulse the point light for an extra glow effect.
+        pointLight.intensity = 2 + Math.sin(time * 2) * 0.5;
+
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      // ----- Handle Window Resize -----
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    </script>
+  </body>
+</html>
